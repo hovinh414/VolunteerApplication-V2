@@ -1,0 +1,95 @@
+import { StyleSheet, Dimensions } from 'react-native'
+import COLORS from '../../../constants/colors'
+
+const screenWidth = Dimensions.get('window').width
+export const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    background: {
+        backgroundColor: COLORS.white,
+        padding: 20,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    header: {
+        flex: 1,
+        backgroundColor: '#fff',
+        paddingHorizontal: 13,
+        paddingTop: 55,
+        paddingBottom: 30,
+    },
+    view: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingTop: 15,
+        marginHorizontal:12,
+        justifyContent: 'space-between',
+    },
+    searchInput: {
+        flexDirection: 'row',
+        borderRadius: 10,
+        borderColor: '#cccc',
+        borderWidth: 1,
+        marginLeft: 15,
+        marginRight: 8,
+        flex: 1,
+        padding: 7,
+        alignItems: 'center',
+    },
+    viewList: {
+        flexDirection: 'row',
+        backgroundColor: '#F0F0F0',
+        width: screenWidth - 35,
+        height: 130,
+        marginHorizontal: 12,
+        marginTop: 15,
+        justifyContent: 'space-between',
+        borderRadius: 15,
+        padding: 10,
+    },
+    viewDate: {
+        position: 'absolute',
+        zIndex: 3,
+        top: 30,
+        backgroundColor: '#EE6457',
+        borderBottomRightRadius: 5,
+        borderTopRightRadius: 5,
+        width: 55,
+        height: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    openModal: {
+        justifyContent: 'center',
+        marginTop: 10,
+        alignItems: 'center',
+        backgroundColor: COLORS.primary,
+        borderRadius: 10,
+    },
+    attendance: {
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: 10,
+    },
+    join: {
+        color: COLORS.primary,
+        fontSize: 14,
+        fontWeight: 'bold',
+    },
+    viewAttendance: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    date: {
+        marginLeft: 12,
+        marginTop: 15,
+        fontWeight: '700',
+        color: COLORS.primary,
+    },
+})

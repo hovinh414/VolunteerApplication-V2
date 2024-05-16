@@ -1,0 +1,274 @@
+import mongoose from "mongoose";
+import { DateFormat, ExpirationDateMustGreaterCurrentDate, OrgNotActive, ParticipantsMustGreaterThan0, PostMustCreateByOrg } from "../../../shared/error/post.error";
+import {
+  ResponseBase,
+  ResponseStatus,
+} from "../../../shared/response/response.payload";
+import { PostDTO } from "../DTO/post.dto";
+import { ActivityRepository } from "../repository/activity/activity.repository";
+import { FollowRepository } from "../repository/follow/follow.repository";
+import { PostRepository } from "../repository/post/post.repository";
+import { DonationRepository } from "../repository/donation/donation.repository";
+import { UserRepository } from "../repository/user/user.repository";
+import { getLocationFromAddress } from "./location.service";
+import { commentDTO } from "../DTO/comment.dto";
+
+
+
+export class PostService {
+  private readonly postRepository!: PostRepository;
+  private readonly userRepository!: UserRepository;
+  private readonly activityRepository!: ActivityRepository;
+  private readonly followRepository!: FollowRepository;
+  private readonly donationRepository!: DonationRepository;
+
+  constructor() {
+    this.postRepository = new PostRepository();
+    this.userRepository = new UserRepository();
+    this.activityRepository = new ActivityRepository();
+    this.followRepository = new FollowRepository();
+    this.donationRepository = new DonationRepository();
+  }
+
+  async savePost(_post: any) {
+    try {
+      const postSave = await this.postRepository.savePost(_post);
+      return postSave;
+
+    } catch (error: any) {
+      if (error instanceof PostMustCreateByOrg) {
+        throw new PostMustCreateByOrg('PostMustCreateByOrg');
+      }
+      else if (error instanceof ExpirationDateMustGreaterCurrentDate) {
+        throw new ExpirationDateMustGreaterCurrentDate('ExpirationDateMustGreaterCurrentDate');
+      }
+      else if (error instanceof DateFormat) {
+        throw new DateFormat('DateFormat');
+      }
+      else if (error instanceof ParticipantsMustGreaterThan0) {
+        throw new ParticipantsMustGreaterThan0('ParticipantsMustGreaterThan0');
+      }
+      else if (error instanceof OrgNotActive) {
+        throw new OrgNotActive('OrgNotActive');
+      }
+      else {
+        console.log(error)
+      }
+    }
+  }
+  async getAllPost(page: any, limit: any, userId: any) {
+    try {
+      const allPosts: any = await this.postRepository.getAllPosts(page, limit, userId);
+      return allPosts;
+    } catch (error) {
+      console.log('Error when getting all posts:', error);
+      throw error;
+    }
+  }
+
+  async getAllPostByOrg(userId: any, orgId: any, page: any, limit: any) {
+    try {
+      const allPosts: any = await this.postRepository.getAllPostsByOrg(orgId, page, limit);
+      const isUserLoggedIn = !!userId;
+      const postsInformation: PostDTO[] = await Promise.all(allPosts.map(async (post: any) => {
+        const orgInformationCreatePost: any = await this.userRepository.getExistOrgById(post.ownerId);
+        let isJoin: boolean | undefined = undefined;
+        const postDTO: Omit<PostDTO, 'likes' | 'totalLikes'> = {
+          _id: post._id,
+          type: post.type,
+          ownerId: post.ownerId,
+          ownerDisplayname: orgInformationCreatePost.fullname,
+          ownerAvatar: orgInformationCreatePost.avatar,
+          address: orgInformationCreatePost.address,
+          updatedAt: post.updatedAt,
+          createdAt: post.createdAt,
+          scope: post.scope,
+          content: post.content,
+          media: post.media,
+          activityId: post?.activityId,
+          donationId: post?.donationId,
+          numOfComment: post.numOfComment,
+          commentUrl: post.commentUrl,
+        };
+        if (post.type.toLowerCase() === 'activity') {
+          const activityInformation: any = await this.activityRepository.getActivityById(post.activityId);
+          postDTO.exprirationDate = activityInformation.exprirationDate;
+          postDTO.participants = activityInformation.participants;
+          postDTO.totalUserJoin = activityInformation.numOfPeopleParticipated;
+          postDTO.isExprired = activityInformation?.isExprired
+          if (isUserLoggedIn) {
+            isJoin = await this.activityRepository.isJoined(userId, post.activityId);
+            postDTO.isJoin = isJoin;
+          }
+        }
+        else if (post.type.toLowerCase() === 'donation') {
+          const donationInformation: any = await this.donationRepository.getDonationById(post.donationId);
+          postDTO.exprirationDate = donationInformation.exprirationDate;
+          postDTO.totalUserJoin = donationInformation.numOfPeopleParticipated;
+          postDTO.isExprired = donationInformation?.isExprired;
+          postDTO.isLock = donationInformation?.isLock;
+          postDTO.reasonLock = donationInformation?.reasonLock;
+          if (isUserLoggedIn) {
+            isJoin = await this.donationRepository.isJoined(userId, post.donationId);
+            postDTO.isJoin = isJoin;
+          }
+        }
+
+        return postDTO;
+      }));
+
+      return postsInformation;
+    } catch (error) {
+      console.log('Error when getting all posts:', error);
+      throw error;
+    }
+  }
+
+  async getAllPostUserFollow(_page: any, _limit: any, _userId: any) {
+    try {
+      const allPosts: any = await this.postRepository.getAllPostUserFollow(_page, _limit, _userId);
+      const isUserLoggedIn = !!_userId;
+      const userFollowedOrgs = await this.followRepository.getOrgsFollowedByUser(_userId);
+      const postsInformation: PostDTO[] = await Promise.all(allPosts.map(async (post: any) => {
+        const orgInformationCreatePost: any = await this.userRepository.getExistOrgById(post.ownerId);
+        const isUserFollowingOrg = userFollowedOrgs.some((org) => org.followingId == post.ownerId);
+        let isJoin: boolean | undefined = undefined;
+        const postDTO: Omit<PostDTO, 'likes' | 'totalLikes'> = {
+          _id: post._id,
+          type: post.type,
+          ownerId: post.ownerId,
+          ownerDisplayname: orgInformationCreatePost.fullname,
+          ownerAvatar: orgInformationCreatePost.avatar,
+          address: orgInformationCreatePost.address,
+          updatedAt: post.updatedAt,
+          createdAt: post.createdAt,
+          scope: post.scope,
+          content: post.content,
+          media: post.media,
+          activityId: post?.activityId,
+          donationId: post?.donationId,
+          numOfComment: post.numOfComment,
+          commentUrl: post.commentUrl,
+          isFollow: isUserFollowingOrg,
+        };
+        if (post.type.toLowerCase() === 'activity') {
+          const activityInformation: any = await this.activityRepository.getActivityById(post.activityId);
+          postDTO.exprirationDate = activityInformation.exprirationDate;
+          postDTO.participants = activityInformation.participants;
+          postDTO.totalUserJoin = activityInformation.numOfPeopleParticipated;
+          postDTO.isExprired = activityInformation?.isExprired;
+          if (isUserLoggedIn) {
+            isJoin = await this.activityRepository.isJoined(_userId, post.activityId);
+            postDTO.isJoin = isJoin;
+          }
+        }
+        else if (post.type.toLowerCase() === 'donation') {
+          const donationInformation: any = await this.donationRepository.getDonationById(post.donationId);
+          postDTO.exprirationDate = donationInformation.exprirationDate;
+          postDTO.totalUserJoin = donationInformation.numOfPeopleParticipated;
+          postDTO.isExprired = donationInformation?.isExprired;
+          postDTO.isLock = donationInformation?.isLock;
+          postDTO.reasonLock = donationInformation?.reasonLock;
+          if (isUserLoggedIn) {
+            isJoin = await this.donationRepository.isJoined(_userId, post.donationId);
+            postDTO.isJoin = isJoin;
+          }
+        }
+
+        return postDTO;
+      }));
+
+      return { success: 'Get success', postsInformation };
+    } catch (error) {
+      return { error: error };
+      throw error;
+    }
+  }
+
+
+  async getDetaiPost(_postId: any, _userId: any) {
+    try {
+      const post: any = await this.postRepository.getDetailPost(_postId, _userId);
+      return post;
+    } catch (error) {
+      console.log('Error when getting detail post:', error);
+      throw error;
+    }
+  }
+
+  async getNearbyPosts(_userId: any, _page: any, _limit: any) {
+    const userInfo: any = await this.userRepository.getExistUserById(_userId);
+    this.postRepository.getNearbyPosts(userInfo.address, _page, _limit)
+      .then((nearbyPosts) => { return nearbyPosts })
+      .catch((error) => console.error(error));
+  }
+
+  async commentAPost(_ownerId: any, _postId: any, _content: any) {
+    const commentResult = await this.postRepository.commentAPost(_ownerId, _postId, _content);
+    return commentResult;
+  }
+  async replyAComment(_ownerId: any, _postId: any, _content: any, _parentCommentId: any) {
+    const commentResult = await this.postRepository.replyAComment(_ownerId, _postId, _content, _parentCommentId);
+    return commentResult;
+  }
+  async getAllCommentAPost(_postId: any, _page: any, _limit: any) {
+    try {
+      const allComments: any = await this.postRepository.getAllCommentAPost(_postId, _page, _limit);
+      const commentsInformation = await Promise.all(allComments.map(async (comment: any) => {
+        const userInformationComment: any = await this.userRepository.getExistUserById(comment.ownerId);
+        // Create a PostDTO without the likes and totalLikes fields
+        const commentResult: commentDTO = {
+          _id: comment._id,
+          content: comment.content,
+          createAt: comment.createAt,
+          ownerId: comment.ownerId,
+          postId: comment.postId,
+          ownerAvatar: userInformationComment.avatar,
+          ownerDisplayname: userInformationComment.fullname,
+          parentId: comment.parentId
+        };
+        return commentResult;
+      }));
+      return commentsInformation;
+    } catch (error) {
+      console.log('Error when getting all posts:', error);
+      throw error;
+    }
+  }
+
+  async getOrgCreateMostPost() {
+    try {
+      const topUsers = await this.postRepository.getTopUsersByPostCountWithinLastMonth()
+      return topUsers
+    } catch (error) {
+      return error
+    }
+  }
+
+  async getTopPostUserJoin() {
+    try {
+      const topPosts = await this.postRepository.getTopPostsMostUserJoinWithinLastMonth()
+      return topPosts
+    } catch (error) {
+      return error
+    }
+  }
+
+  async lockDonationPost(_orgId: any, _reasonLock: String, _donationId: any) {
+    try {
+      const resultLock = await this.postRepository.lockDonationPost(_orgId, _reasonLock, _donationId);
+      return resultLock;
+    } catch (error: any) {
+      return { success: false, error: error?.error, message: error.message }; // Indicate failure with error details
+    }
+  }
+
+  async searchPost(text: any) {
+    try {
+      const searchPosts = await this.postRepository.searchPost(text);
+      return searchPosts
+    } catch (error) {
+      return error
+    }
+  }
+}

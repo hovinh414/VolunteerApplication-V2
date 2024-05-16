@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "471896108758",
+    "project_id": "bhx-clone",
+    "storage_bucket": "bhx-clone.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:471896108758:android:0303765c05be03557ee377",
+        "android_client_info": {
+          "package_name": "com.hutech.VolunteerAppMobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "471896108758-mbvulejv0enve7e4r1ree1a82nc6dsdm.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA0_0c2B4o-LAIVTsPd4x8xNy3fbLvmF30"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "471896108758-mbvulejv0enve7e4r1ree1a82nc6dsdm.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
